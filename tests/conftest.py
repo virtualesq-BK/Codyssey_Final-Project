@@ -11,5 +11,7 @@ def idea() -> BusinessIdea:
         target_customer="소상공인",
         industry="fintech",
         geography="KR",
+        country="KR",
         business_model="SaaS",
+        price=29000,
     )

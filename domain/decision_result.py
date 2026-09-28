@@ -11,6 +11,7 @@ class DecisionResult(BaseModel):
     business_model_assessment: str = ""
     financial_assessment: str = ""
     risk_assessment: str = ""
+    legal_compliance_assessment: str = ""
     key_findings: list[str] = Field(default_factory=list)
     open_questions: list[str] = Field(default_factory=list)
     action_plan: list[str] = Field(default_factory=list)
