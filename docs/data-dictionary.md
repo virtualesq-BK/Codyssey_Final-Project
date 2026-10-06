@@ -1,6 +1,6 @@
 # 데이터 사전 (Agent 결과 칸 정의)
 
-> 상태: **초안 v0.1** (C 작성, 팀 리뷰 전) · 최종 수정: 2026-10-06
+> 상태: **초안 v0.2** (C 작성, 팀 리뷰 전) · 최종 수정: 2026-10-06 · C 결과 `schema_version: "c-0.2"`
 > 목적: 에이전트가 늘어나도 칸 이름·단위·뜻이 헷갈리지 않게, **모든 에이전트 결과의 칸을 한곳에서** 정의한다.
 > 각 담당자는 자기 에이전트 섹션을 채운다. 공통 규칙(1~3장) 변경은 GitHub Issue로.
 
@@ -26,7 +26,7 @@
 | 금액은 원화 정수 + **`_krw`** | `price_krw: 1200000` | 단위를 이름에서 바로 앎 |
 | 정해진 선택지는 영어 소문자 | `billing_period: "year"` | 화면에서 한국어로 바꿔 표시 |
 | 참/거짓은 `is_` / `has_` / `used_` | `is_hypothetical` | 읽으면 질문처럼 보이게 |
-| 다른 칸을 가리킬 때는 **이름 대신 id** (→ 8장 제안 1) | `beachhead.segment_id` | 이름 문자열 비교는 깨지기 쉬움 |
+| 다른 칸을 가리킬 때는 **이름 대신 id** | `beachhead.segment_id: "S1"` | 이름 문자열 비교는 깨지기 쉬움 |
 | 구조 버전 표시 | `schema_version: "c-0.1"` | 칸이 바뀌어도 옛 결과를 구분 |
 
 ---
@@ -74,8 +74,8 @@
 | `problem_statement` | `{text, frequency, grade}` | 누가·언제·무엇 때문에·어떤 손실 | AI | 문제 | BM, Decision |
 | `jtbd` | `{when, want, so_that, functional, emotional, social}` | 고객이 해결하려는 일 | AI | JTBD 흐름 | |
 | `alternatives[]` | `{method, cost_or_pain, pain_score, grade}` | 지금 고객이 쓰는 방법 (항상 "아무것도 안 함" 포함) | AI | 현재 대안 | |
-| `segments[]` | `{name, size, pain, willingness_to_pay, reach, total, grade}` | 고객 세그먼트와 점수 | AI · **`total`은 코드** | 세그먼트 점수표 | BM |
-| `beachhead` | `{segment, reason}` | 첫 공략 세그먼트 | AI | 강조 줄 | **BM** |
+| `segments[]` | `{id, name, size, pain, willingness_to_pay, reach, total, grade}` | 고객 세그먼트와 점수. `id`는 `S1`, `S2`… (중복 불가) | AI · **`total`은 코드** | 세그먼트 점수표 | BM |
+| `beachhead` | `{segment_id, reason}` | 첫 공략 세그먼트. `segment_id`는 `segments[].id` 중 하나 (아니면 결과가 partial) | AI | 강조 줄 | **BM** |
 | `user_vs_payer` | `{user, payer, same}` | 쓰는 사람과 돈 내는 사람 | AI | 사용자 vs 지불자 | **BM** |
 | `personas[]` | `{name, profile, day, worst_moment, tools, buying_power, is_hypothetical}` | 대표 고객 1~2명 | AI · **`is_hypothetical`은 코드가 강제** | 페르소나 카드 | |
 | `purchase_drivers[]` | str | 사는 이유 | AI | 구매 동기 | BM |
@@ -116,6 +116,7 @@
 ### Customer → Business Model
 `BusinessIdea.additional_context["customer_analysis"]` = Customer의 `metadata`.
 BM이 실제로 읽는 칸: `problem_statement`, `beachhead`, `user_vs_payer`, `segments`, `purchase_drivers`, `purchase_barriers`, `hypotheses`.
+전달할 때 코드가 `beachhead.segment_name`(id가 가리키는 이름)을 덧붙인다.
 
 ### Business Model → Financial (D) — ⚠️ 합의 필요
 
@@ -127,13 +128,14 @@ BM이 내보내는 값:
 | `billing_period` | `"year"` |
 | `unit` | `"school"` |
 | `payer_type` | `"B2G"` |
+| `monthly_equivalent_krw` | 150000 (연 가격 ÷ 12 · 월 가격은 그대로 · 1회/건당은 `null`) — **코드 계산** |
 
 D의 계산기 입력(`services/calculation/schemas.py` `FinancialInputs`)과 맞춰 보면:
 
 | D가 필요한 칸 | BM이 줄 수 있나 | 문제 |
 | --- | --- | --- |
 | `price` | ✅ `price_krw` | — |
-| `avg_revenue_per_customer_month` | ⚠️ | **D는 월 기준인데 BM은 연 가격** → 월 환산 필요 (연 180만 → 월 15만) |
+| `avg_revenue_per_customer_month` | ✅ `monthly_equivalent_krw` | D는 월 기준 → BM이 월 환산값을 함께 넘김 (v0.2) |
 | `new_customers`, `units_sold` | ❌ | 예상 고객 수를 누가 낼지 미정 |
 | `unit_variable_cost`, `fixed_costs`, `marketing_spend` | ❌ | BM은 비용 **항목**만 줌. 금액 추정은 D |
 | `gross_margin_pct` | ❌ | D 계산기에서는 **0~1 비율**인데 이름은 `_pct` → 헷갈림 주의 |
@@ -161,8 +163,8 @@ D의 계산기 입력(`services/calculation/schemas.py` `FinancialInputs`)과 �
 
 | # | 제안 | 이유 | 영향 |
 | --- | --- | --- | --- |
-| 1 | `segments[]`에 `id` 추가, `beachhead.segment` → `beachhead.segment_id` | 지금은 이름 문자열이 정확히 같아야 연결됨 (AI가 글자 하나만 달리 써도 끊김) | Customer 스키마·프롬프트·뷰어 |
-| 2 | `handoff_to_financial`에 `monthly_equivalent_krw` 추가 (코드 계산) | D 계산기가 월 기준 (6장) | BM 코드, D와 합의 |
+| 1 | ✅ **반영 (v0.2)** `segments[].id` + `beachhead.segment_id` | 이름 문자열 비교는 AI가 글자 하나만 달리 써도 끊김 | Customer 스키마·프롬프트·뷰어 |
+| 2 | ✅ **반영 (v0.2)** `handoff_to_financial.monthly_equivalent_krw` | D 계산기가 월 기준 (6장) | BM 코드 — D 확인 필요 |
 | 3 | `grade`, `GradedText`, `Hypothesis`를 모든 에이전트 공통 모양으로 | Decision이 모든 에이전트의 가설·발견을 한 번에 모으기 쉬움 | `domain/` 변경 → A와 Issue |
 | 4 | D 계산기의 `gross_margin_pct`(0~1) → `gross_margin_ratio` | `_pct`는 보통 0~100으로 읽힘 | D 코드 |
 

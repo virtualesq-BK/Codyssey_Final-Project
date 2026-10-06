@@ -47,6 +47,7 @@ async def test_valid_json_succeeds_with_handoff_and_checks(idea):
     meta = result.metadata
     assert meta["handoff_to_financial"] == {
         "price_krw": 1200000, "billing_period": "year", "unit": "center", "payer_type": "B2G",
+        "monthly_equivalent_krw": 100000,  # 연 120만 원 ÷ 12
     }
     assert meta["used_upstream"] == []
     assert len(result.findings) == 5
@@ -66,7 +67,8 @@ async def test_customer_analysis_is_passed_into_prompt():
         title="다문화 한국어",
         additional_context={
             "customer_analysis": {
-                "beachhead": {"segment": "다문화가족지원센터", "reason": "예산 보유"},
+                "segments": [{"id": "S1", "name": "다문화가족지원센터"}, {"id": "S2", "name": "학교"}],
+                "beachhead": {"segment_id": "S1", "reason": "예산 보유"},
                 "user_vs_payer": {"user": "아동", "payer": "센터", "same": False},
                 "personas": [{"name": "란 씨"}],  # BM에 불필요한 칸은 빠져야 함
             },
@@ -78,9 +80,17 @@ async def test_customer_analysis_is_passed_into_prompt():
 
     assert result.metadata["used_upstream"] == ["customer_analysis"]
     assert "## 앞 단계 분석 (이 결론을 바탕으로 설계할 것)" in llm.user_prompt
-    assert "다문화가족지원센터" in llm.user_prompt
+    assert '"segment_name": "다문화가족지원센터"' in llm.user_prompt  # id → 이름 풀어서 전달
     assert "란 씨" not in llm.user_prompt
     assert "센터 담당자 2명 인터뷰" in llm.user_prompt  # 앞 단계가 아닌 추가 정보는 따로 전달
+
+
+async def test_monthly_equivalent_by_billing_period(idea):
+    for period, expected in [("month", 1200000), ("one_time", None), ("per_use", None)]:
+        data = copy.deepcopy(VALID)
+        data["pricing"]["billing_period"] = period
+        result = await BusinessModelAgent(llm=FakeLLMProvider(json.dumps(data))).run(idea)
+        assert result.metadata["handoff_to_financial"]["monthly_equivalent_krw"] == expected
 
 
 async def test_chosen_model_not_in_candidates_is_flagged(idea):

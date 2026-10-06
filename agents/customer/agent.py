@@ -136,7 +136,7 @@ def _quality_checks(analysis: CustomerAnalysis) -> dict[str, bool]:
         "has_do_nothing_alternative": any(
             "아무것도" in a.method or "안 함" in a.method for a in analysis.alternatives
         ),
-        "beachhead_is_top_segment": analysis.beachhead.segment == top.name,
+        "beachhead_is_top_segment": analysis.beachhead.segment_id == top.id,
         "beachhead_has_reason": bool(analysis.beachhead.reason.strip()),
         "has_hypotheses": len(analysis.hypotheses) > 0,
     }

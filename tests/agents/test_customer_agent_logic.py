@@ -20,10 +20,10 @@ VALID = {
         {"method": "아무것도 안 함", "cost_or_pain": "몰아서 작성", "pain_score": 5, "grade": "D"},
     ],
     "segments": [
-        {"name": "겸임 교사", "size": 4, "pain": 5, "willingness_to_pay": 2, "reach": 4, "total": 99, "grade": "C"},
-        {"name": "교감", "size": 4, "pain": 2, "willingness_to_pay": 5, "reach": 2, "grade": "C"},
+        {"id": "S1", "name": "겸임 교사", "size": 4, "pain": 5, "willingness_to_pay": 2, "reach": 4, "total": 99, "grade": "C"},
+        {"id": "S2", "name": "교감", "size": 4, "pain": 2, "willingness_to_pay": 5, "reach": 2, "grade": "C"},
     ],
-    "beachhead": {"segment": "겸임 교사", "reason": "고통이 가장 큼"},
+    "beachhead": {"segment_id": "S1", "reason": "고통이 가장 큼"},
     "user_vs_payer": {"user": "교사", "payer": "교감·행정실", "same": False},
     "personas": [{"name": "김교사", "profile": "초등 5년차", "is_hypothetical": False}],
     "hypotheses": [{"id": "H1", "statement": "1회 4시간 이상", "grade": "D", "validation": "실측"}],
@@ -49,7 +49,7 @@ async def test_valid_json_succeeds_with_code_postprocessing(idea):
 
     assert result.status == AgentStatus.SUCCESS
     meta = result.metadata
-    assert meta["schema_version"] == "c-0.1"
+    assert meta["schema_version"] == "c-0.2"
     assert meta["segments"][0]["total"] == 15  # LLM이 준 99가 아니라 코드 계산값
     assert meta["personas"][0]["is_hypothetical"] is True  # 인터뷰 자료 없음 → 가상 강제
     assert len(result.findings) == 5 and result.findings[0] == "발견 0 [C]"
@@ -85,6 +85,20 @@ async def test_missing_required_field_is_partial(idea):
     result = await CustomerAgent(llm=FakeLLMProvider(json.dumps(broken))).run(idea)
     assert result.status == AgentStatus.PARTIAL
     assert "alternatives" in result.metadata["validation_errors"]
+
+
+async def test_beachhead_pointing_to_unknown_segment_is_partial(idea):
+    broken = copy.deepcopy(VALID)
+    broken["beachhead"]["segment_id"] = "S9"
+    result = await CustomerAgent(llm=FakeLLMProvider(json.dumps(broken))).run(idea)
+    assert result.status == AgentStatus.PARTIAL
+
+
+async def test_duplicate_segment_ids_are_partial(idea):
+    broken = copy.deepcopy(VALID)
+    broken["segments"][1]["id"] = "S1"
+    result = await CustomerAgent(llm=FakeLLMProvider(json.dumps(broken))).run(idea)
+    assert result.status == AgentStatus.PARTIAL
 
 
 async def test_llm_error_is_failed(idea):

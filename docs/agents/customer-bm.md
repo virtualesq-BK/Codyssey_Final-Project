@@ -1,6 +1,6 @@
 # C 결과 설계서 — Customer Agent · Business Model Agent
 
-> 담당: C (great-opportunity) · 상태: **초안 v0.1** · 최종 수정: 2026-10-06
+> 담당: C (great-opportunity) · 상태: **초안 v0.2** · 최종 수정: 2026-10-06 · 칸별 정의는 `docs/data-dictionary.md`
 > 이 문서는 두 에이전트가 **무엇을 받아서 무엇을 돌려주는지**, 그리고 **좋은 결과의 기준**을 정한다.
 > 공통 계약(`BaseAgent`, `AgentResult`, `Evidence`)은 바꾸지 않는다. 구조화된 값은 `AgentResult.metadata`에 넣는다.
 
@@ -82,9 +82,9 @@
     { "method": "...", "cost_or_pain": "...", "pain_score": 4, "grade": "C" }
   ],
   "segments": [                     // 각 1~5점, total은 코드가 계산
-    { "name": "...", "size": 4, "pain": 5, "willingness_to_pay": 2, "reach": 4, "total": 15, "grade": "C" }
+    { "id": "S1", "name": "...", "size": 4, "pain": 5, "willingness_to_pay": 2, "reach": 4, "total": 15, "grade": "C" }
   ],
-  "beachhead": { "segment": "...", "reason": "..." },
+  "beachhead": { "segment_id": "S1", "reason": "..." },  // 이름이 아니라 id로 가리킴
   "user_vs_payer": { "user": "...", "payer": "...", "same": false },
   "personas": [                     // 1~2명
     { "name": "...", "profile": "...", "day": "...", "worst_moment": "...",
@@ -135,7 +135,8 @@
     "price_krw": 1200000,
     "billing_period": "year",
     "unit": "school",
-    "payer_type": "B2B"             // "B2C" | "B2B" | "B2G"
+    "payer_type": "B2B",            // "B2C" | "B2B" | "B2G"
+    "monthly_equivalent_krw": 100000  // 코드 계산: 연 ÷ 12, 월 그대로, 1회·건당 null
   }
 }
 ```

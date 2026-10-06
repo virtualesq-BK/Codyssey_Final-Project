@@ -8,7 +8,7 @@ Grade = Literal["A", "B", "C", "D"]
 BillingPeriod = Literal["month", "year", "one_time", "per_use"]
 PayerType = Literal["B2C", "B2B", "B2G"]
 
-SCHEMA_VERSION = "c-0.1"
+SCHEMA_VERSION = "c-0.2"
 
 
 class GradedText(BaseModel):
@@ -71,6 +71,9 @@ class HandoffToFinancial(BaseModel):
     billing_period: BillingPeriod
     unit: str
     payer_type: PayerType
+    # D 계산기는 월 기준 (FinancialInputs.avg_revenue_per_customer_month).
+    # 연 가격은 12로 나눈 값, 1회·건당 가격은 반복 매출이 아니므로 None.
+    monthly_equivalent_krw: int | None
 
 
 class BusinessModelAnalysis(BaseModel):

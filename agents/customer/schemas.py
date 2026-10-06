@@ -5,11 +5,11 @@ LLM 응답은 CustomerLLMOutput으로 검증하고, 그중 분석 본문을 Agen
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 Grade = Literal["A", "B", "C", "D"]
 
-SCHEMA_VERSION = "c-0.1"
+SCHEMA_VERSION = "c-0.2"
 
 
 class GradedText(BaseModel):
@@ -40,6 +40,7 @@ class Alternative(BaseModel):
 
 
 class Segment(BaseModel):
+    id: str  # "S1", "S2" … — 다른 칸은 이 id로 가리킨다
     name: str
     size: int = Field(ge=1, le=5)
     pain: int = Field(ge=1, le=5)
@@ -50,7 +51,7 @@ class Segment(BaseModel):
 
 
 class Beachhead(BaseModel):
-    segment: str
+    segment_id: str  # segments[].id
     reason: str = ""
 
 
@@ -90,6 +91,15 @@ class CustomerAnalysis(BaseModel):
     purchase_drivers: list[str] = Field(default_factory=list)
     purchase_barriers: list[str] = Field(default_factory=list)
     hypotheses: list[Hypothesis] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _check_segment_refs(self) -> "CustomerAnalysis":
+        ids = [s.id for s in self.segments]
+        if len(ids) != len(set(ids)):
+            raise ValueError("segments[].id must be unique")
+        if self.beachhead.segment_id not in ids:
+            raise ValueError("beachhead.segment_id must match one of segments[].id")
+        return self
 
 
 class CustomerLLMOutput(CustomerAnalysis):

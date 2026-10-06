@@ -92,8 +92,19 @@ def upstream_context(idea: BusinessIdea) -> dict[str, Any]:
             continue
         if key == "customer_analysis" and isinstance(value, dict):
             value = {k: value[k] for k in CUSTOMER_FIELDS if k in value}
+            value = _with_beachhead_name(value)
         found[key] = value
     return found
+
+
+def _with_beachhead_name(customer: dict[str, Any]) -> dict[str, Any]:
+    """beachhead.segment_id가 가리키는 세그먼트 이름을 segment_name으로 덧붙인다."""
+    beachhead = customer.get("beachhead")
+    if not isinstance(beachhead, dict) or "segment_id" not in beachhead:
+        return customer
+    names = {s.get("id"): s.get("name") for s in customer.get("segments", []) if isinstance(s, dict)}
+    name = names.get(beachhead["segment_id"])
+    return {**customer, "beachhead": {**beachhead, "segment_name": name}} if name else customer
 
 
 def build_user_prompt(idea: BusinessIdea, references: list[SearchResult]) -> str:

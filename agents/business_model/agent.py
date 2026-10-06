@@ -83,6 +83,7 @@ class BusinessModelAgent(BaseAgent):
             billing_period=pricing.billing_period,
             unit=pricing.unit,
             payer_type=analysis.payer_type,
+            monthly_equivalent_krw=_monthly_equivalent(pricing.price_krw, pricing.billing_period),
         )
         upstream = upstream_context(idea)
 
@@ -117,6 +118,14 @@ class BusinessModelAgent(BaseAgent):
             confidence=0.0,
             metadata=metadata,
         )
+
+
+def _monthly_equivalent(price_krw: int, billing_period: str) -> int | None:
+    if billing_period == "month":
+        return price_krw
+    if billing_period == "year":
+        return round(price_krw / 12)
+    return None
 
 
 def _to_evidence(result: SearchResult) -> Evidence:
