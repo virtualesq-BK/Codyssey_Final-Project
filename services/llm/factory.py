@@ -16,4 +16,10 @@ def create_provider(name: str | None = None, settings: Settings | None = None) -
     if name not in keys:
         raise ValueError(f"Unknown LLM provider: {name}")
     cls, key = keys[name]
+    if cls is AnthropicProvider:
+        return cls(
+            api_key=key,
+            default_model=s.default_llm_model or None,
+            base_url=s.anthropic_base_url or None,
+        )
     return cls(api_key=key, default_model=s.default_llm_model or None)
