@@ -21,15 +21,29 @@ def _response(stop_reason="end_turn", model="claude-opus-5-5"):
     )
 
 
+class FakeStream:
+    def __init__(self, response):
+        self._response = response
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def get_final_message(self):
+        return self._response
+
+
 class FakeClient:
     def __init__(self, response):
         self.calls: list[dict] = []
-        self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._create))
+        self.beta = SimpleNamespace(messages=SimpleNamespace(stream=self._stream))
         self._response = response
 
-    async def _create(self, **kwargs):
+    def _stream(self, **kwargs):
         self.calls.append(kwargs)
-        return self._response
+        return FakeStream(self._response)
 
 
 async def test_generate_sends_expected_request_and_joins_text():

@@ -82,7 +82,9 @@ class AnthropicProvider(LLMProvider):
         }
         if self.use_fallbacks:
             request |= {"betas": [FALLBACK_BETA], "fallbacks": "default"}
-        response = await self.client.beta.messages.create(**request)
+        # 스트리밍: 긴 응답에서도 연결이 유지돼 프록시·HTTP 타임아웃(504)에 걸리지 않는다
+        async with self.client.beta.messages.stream(**request) as stream:
+            response = await stream.get_final_message()
         latency_ms = (time.perf_counter() - started) * 1000
         self._record(response, model_id, latency_ms)
 
